@@ -35,6 +35,11 @@ class GameTranslator:
         self.opacity = 0.9           # ความโปร่งใส (0-1)
         self.show_original = True    # แสดงข้อความต้นฉบับ
         
+        # Default settings for display region (black bg, transparent, white text)
+        self.default_display_bg = (0, 0, 0)        # ดำ
+        self.default_display_opacity = 0.6         # โปร่งใสนิดหน่อย
+        self.default_display_text = (255, 255, 255) # ขาว
+        
         # State
         self.last_text = ""
         self.last_translated = ""
@@ -246,12 +251,26 @@ class GameTranslator:
         return img, total_height
     
     def show_translation(self, original, translated):
-        """แสดงผลการแปลบนหน้าจอ"""
+        """แสดงผลการแปลบนหน้าจอแบบ GUI overlay"""
         if not self.display_region:
             print("⚠️  ยังไม่ได้ตั้งค่าตำแหน่งแสดงผล (กด F8)")
             return
         
+        # ใช้สี default สำหรับ display (ดำ โปร่งใส ขาว)
+        old_bg = self.bg_color
+        old_opacity = self.opacity
+        old_text = self.text_color
+        
+        self.bg_color = self.default_display_bg
+        self.opacity = self.default_display_opacity
+        self.text_color = self.default_display_text
+        
         overlay_img, height = self.create_overlay(original, translated)
+        
+        # คืนค่าเดิม
+        self.bg_color = old_bg
+        self.opacity = old_opacity
+        self.text_color = old_text
         
         # แปลงเป็น numpy array สำหรับ OpenCV
         overlay_array = np.array(overlay_img)
@@ -265,6 +284,8 @@ class GameTranslator:
         cv2.moveWindow('Translation', x, y)
         cv2.setWindowProperty('Translation', cv2.WND_PROP_TOPMOST, 1)
         cv2.waitKey(1)
+        
+        print(f"🖥️  แสดงผลที่ตำแหน่ง ({x}, {y}) - กด F10 เพื่อซ่อน/แสดง")
     
     def translate_and_show(self):
         """แปลและแสดงผล"""
@@ -371,13 +392,12 @@ class GameTranslator:
                 print("❌ ไม่รู้จำคำสั่งนี้")
     
     def set_region_by_points(self, name, mode):
-        """ตั้งค่าพื้นที่แบบกด F1 สองครั้งที่ตำแหน่งมุมตรงข้าม"""
+        """ตั้งค่าพื้นที่แบบกด F1 สองครั้ง พร้อมแสดง preview"""
         print(f"\n🖱️  ตั้งค่าพื้นที่{name}")
-        print("   1. เลื่อนเมาส์ไปที่มุมแรก (ซ้ายบน)")
-        print("   2. กด F1 เพื่อบันทึกจุดที่ 1")
-        print("   3. เลื่อนเมาส์ไปที่มุมตรงข้าม (ขวาล่าง)")
-        print("   4. กด F1 อีกครั้งเพื่อบันทึกจุดที่ 2")
-        print("\n   รอการกด F1...")
+        print("   1. เลื่อนเมาส์ไปที่มุมแรก (ซ้ายบน) → กด F1")
+        print("   2. เลื่อนเมาส์ไปที่มุมตรงข้าม (ขวาล่าง) → กด F1")
+        print("   3. ดู preview กรอบ → กด Enter เพื่อยืนยัน หรือ ESC เพื่อยกเลิก")
+        print("\n   รอการกด F1 ครั้งที่ 1...")
         
         point1 = None
         point2 = None
@@ -387,11 +407,11 @@ class GameTranslator:
             if keyboard.is_pressed('f1'):
                 point1 = pyautogui.position()
                 print(f"   ✅ จุดที่ 1: ({point1.x}, {point1.y})")
-                time.sleep(0.5)  # กันการกดซ้ำ
+                time.sleep(0.5)
                 break
             time.sleep(0.05)
         
-        print("   เลื่อนเมาส์ไปมุมตรงข้าม แล้วกด F1...")
+        print("   รอการกด F1 ครั้งที่ 2...")
         
         # รอจุดที่ 2
         while point2 is None:
@@ -406,7 +426,6 @@ class GameTranslator:
         x1, y1 = point1.x, point1.y
         x2, y2 = point2.x, point2.y
         
-        # ปรับให้ x1 < x2, y1 < y2
         x = min(x1, x2)
         y = min(y1, y2)
         w = abs(x2 - x1)
@@ -416,12 +435,57 @@ class GameTranslator:
             print(f"   ❌ พื้นที่เล็กเกินไป ({w}x{h}) ต้อง > 50x30")
             return
         
+        # แสดง preview กรอบบนหน้าจอ
+        print(f"\n📐 Preview: ขนาด {w}x{h} pixels ที่ตำแหน่ง ({x}, {y})")
+        print("   กด Enter เพื่อยืนยัน หรือ ESC เพื่อยกเลิก")
+        
+        # สร้างหน้าต่าง preview แบบ transparent overlay
+        preview_img = np.zeros((h, w, 4), dtype=np.uint8)
+        preview_img[:, :, 0] = 0      # B
+        preview_img[:, :, 1] = 255    # G (เขียว)
+        preview_img[:, :, 2] = 0      # R
+        preview_img[:, :, 3] = 80     # Alpha (โปร่ง)
+        
+        # วาดกรอบ
+        cv2.rectangle(preview_img, (0, 0), (w-1, h-1), (0, 255, 0, 255), 3)
+        
+        # แสดง preview
+        cv2.namedWindow('Preview', cv2.WINDOW_NORMAL)
+        cv2.setWindowProperty('Preview', cv2.WND_PROP_TOPMOST, 1)
+        cv2.moveWindow('Preview', x, y)
+        cv2.imshow('Preview', preview_img)
+        cv2.waitKey(1)
+        
+        # รอการยืนยัน
+        confirmed = False
+        while True:
+            if keyboard.is_pressed('return') or keyboard.is_pressed('enter'):
+                confirmed = True
+                break
+            elif keyboard.is_pressed('esc'):
+                confirmed = False
+                break
+            time.sleep(0.05)
+        
+        cv2.destroyWindow('Preview')
+        time.sleep(0.3)
+        
+        if not confirmed:
+            print("   ❌ ยกเลิก")
+            return
+        
+        # บันทึก
         if mode == 'source':
             self.source_region = (x, y, w, h)
             print(f"   ✅ บันทึกกรอบแปล: ({x}, {y}, {w}, {h})")
         else:
-            self.display_region = (x, y, 400, 200)  # ขนาดแสดงผลคงที่
+            # ตำแหน่งแสดงผล: ใช้ค่า default (ดำ โปร่งใส ตัวอักษรขาว)
+            self.display_region = (x, y, 400, 200)
+            self.bg_color = self.default_display_bg
+            self.opacity = self.default_display_opacity
+            self.text_color = self.default_display_text
             print(f"   ✅ บันทึกตำแหน่งแสดงผล: ({x}, {y})")
+            print(f"   🎨 ตั้งค่า: พื้นหลังดำ โปร่งใส ตัวอักษรขาว")
         
         self.save_config()
     
