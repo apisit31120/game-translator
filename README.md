@@ -1,59 +1,43 @@
-# 🎮 Game Translator
+# 🎮 Game Translator - Visual Overlay Edition
 
-**แปลภาษาเกม PC แบบ Real-time พร้อมเสียงพากย์**
+**แปลภาษาเกม PC แบบลากกรอบเองได้ พร้อมปรับสีและตำแหน่งได้**
 
-โปรแกรม Python สำหรับแคปหน้าจอเกม → OCR ดึงข้อความ → แปลเป็นไทย → อ่านออกเสียง (TTS)
+โปรแกรม Python สำหรับแคปหน้าจอเกม → OCR ดึงข้อความ → แปลเป็นไทย → แสดงผลแบบ Overlay
 
 ---
 
 ## ✨ Features
 
-- 📸 **แคปหน้าจอ** อัตโนมัติด้วย hotkey
-- 🔍 **OCR ดึงข้อความ** จากภาพ (รองรับภาษาอังกฤษ)
-- 🌐 **แปลเป็นไทย** ด้วย Google Translate
-- 🔊 **อ่านออกเสียง** ด้วย Windows TTS (ฟรี!)
-- 🖥️ **Overlay แสดงผล** บนหน้าจอแบบ always-on-top
-- ⚡ **Auto Mode** แปลอัตโนมัติทุก 5 วินาที
-- ⌨️ **Hotkeys** ใช้งานง่ายขณะเล่นเกม
+- 🖱️ **ลากกรอบแปลเองได้** - เลือกพื้นที่ที่ต้องการ OCR
+- 📍 **ลากตำแหน่งแสดงผลเองได้** - วางไว้ตรงไหนก็ได้บนหน้าจอ
+- 🎨 **ปรับสีได้** - พื้นหลัง, ตัวอักษร, กรอบ
+- 👁️ **ปรับความโปร่งใสได้** - ไม่บังเกม
+- 💾 **บันทึกการตั้งค่าอัตโนมัติ** - เปิดมาใช้ได้ทันที
+- 🌐 **แปลภาษาไทยสมบูรณ์** - แสดงผลถูกต้อง ไม่มี `?????`
 
 ---
 
 ## 📋 สิ่งที่ต้องติดตั้งก่อน
 
-### 1. Python 3.8 ขึ้นไป
+### 1. Python 3.8+
 Download: https://www.python.org/downloads/
 
-### 2. Tesseract OCR (สำคัญ!)
+### 2. Tesseract OCR
 Download: https://github.com/UB-Mannheim/tesseract/wiki
-- Windows: โหลดไฟล์ `.exe` แล้วติดตั้ง
-- **จด path ไว้** เช่น `C:\Program Files\Tesseract-OCR\tesseract.exe`
+- Windows: โหลด `tesseract-ocr-w64-setup-5.x.x.exe`
+- ติดตั้งตามปกติ (โปรแกรมจะหาเจออัตโนมัติ)
 
 ---
 
 ## 🚀 วิธีติดตั้ง
 
-### Step 1: Clone หรือ Download โปรเจค
-
 ```bash
-git clone https://github.com/yourusername/game-translator.git
+# 1. Clone โปรเจค
+git clone https://github.com/apisit31120/game-translator.git
 cd game-translator
-```
 
-หรือ download ZIP แล้วแตกไฟล์
-
-### Step 2: ติดตั้ง Python Dependencies
-
-```bash
+# 2. ติดตั้ง dependencies
 pip install -r requirements.txt
-```
-
-### Step 3: ตั้งค่า Tesseract Path
-
-แก้ไขไฟล์ `game_translator.py` บรรทัดแรก ๆ (ถ้าจำเป็น):
-
-```python
-# Windows: ระบุ path ของ tesseract
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 ```
 
 ---
@@ -61,54 +45,109 @@ pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tessera
 ## 🎮 วิธีใช้งาน
 
 ### รันโปรแกรม
-
 ```bash
 python game_translator.py
 ```
 
-### Hotkeys
+### ขั้นตอนการใช้งาน
 
-| ปุ่ม | ฟังก์ชัน |
-|-----|----------|
-| `F9` | แปลทันที (manual) |
-| `F10` | เปิด/ปิด Auto Mode |
-| `ESC` | ออกจากโปรแกรม |
+#### 1️⃣ ตั้งค่าครั้งแรก (กด `F8`)
+- กด `S` → ลากกรอบเลือกพื้นที่ที่มีข้อความในเกม
+- กด `D` → ลากเลือกตำแหน่งที่จะแสดงผลแปล
+- กด `B` → เปลี่ยนสีพื้นหลัง
+- กด `T` → เปลี่ยนสีตัวอักษร
+- กด `O` → เปลี่ยนความโปร่งใส
+- กด `Q` → เสร็จสิ้น
 
-### โหมดทำงาน
-
-1. **Manual Mode (F9)** - กดเมื่อต้องการแปล
-2. **Auto Mode (F10)** - แปลอัตโนมัติทุก 5 วินาที
-
-### โหมดแปลเร็ว (แคปครั้งเดียว)
-
-```bash
-python game_translator.py --quick
-```
+#### 2️⃣ ใช้งานปกติ
+- กด `F9` = แปลทันที
+- กด `F10` = เปิด/ปิดการแสดงผล
+- กด `ESC` = ออกจากโปรแกรม
 
 ---
 
-## ⚠️ หมายเหตุ
+## ⌨️ Hotkeys สรุป
 
-- โปรแกรมใช้ **Google Translate** อาจมี delay บ้างถ้าเน็ตช้า
-- OCR อาจไม่แม่นยำ 100% กับฟอนต์แปลก ๆ ในเกม
-- แนะนำให้เล่นเกม **Windowed Mode** หรือ **Borderless Window** จะใช้ง่ายกว่า Fullscreen
-- TTS ภาษาไทยบน Windows อาจไม่สมบูรณ์ ถ้าไม่มี Thai voice pack
+| ปุ่ม | โหมดตั้งค่า (F8) | โหมดใช้งาน |
+|-----|------------------|-----------|
+| `F8` | - | เข้าโหมดตั้งค่า |
+| `F9` | - | แปลทันที |
+| `F10` | - | เปิด/ปิดแสดงผล |
+| `S` | ลากกรอบแปล | - |
+| `D` | ลากตำแหน่งแสดงผล | - |
+| `B` | เปลี่ยนสีพื้นหลัง | - |
+| `T` | เปลี่ยนสีตัวอักษร | - |
+| `O` | เปลี่ยนความโปร่งใส | - |
+| `Q` / `ESC` | ออกจากโหมดตั้งค่า | ออกจากโปรแกรม |
+
+---
+
+## 🎨 การตั้งค่าสี
+
+### สีพื้นหลัง (กด `B`)
+- เทาเข้ม (default)
+- ดำ
+- แดงเข้ม
+- เขียวเข้ม
+- น้ำเงินเข้ม
+- น้ำตาล
+- ม่วงเข้ม
+
+### สีตัวอักษร (กด `T`)
+- ขาวเหลือง (default)
+- ขาว
+- เขียวอ่อน
+- ฟ้าอ่อน
+- ชมพูอ่อน
+- เหลือง
+- ฟ้า cyan
+
+### ความโปร่งใส (กด `O`)
+- 0.9 (default) - แทบไม่โปร่ง
+- 0.7 - โปร่งปานกลาง
+- 0.5 - โปร่งมาก
+
+---
+
+## 📁 ไฟล์ที่สำคัญ
+
+| ไฟล์ | รายละเอียด |
+|-----|-----------|
+| `game_translator.py` | โปรแกรมหลัก |
+| `translator_config.json` | การตั้งค่าที่บันทึกไว้ |
+| `requirements.txt` | รายการ library |
 
 ---
 
 ## 🔧 แก้ไขปัญหา
 
 ### "TesseractNotFoundError"
-ติดตั้ง Tesseract ไม่สำเร็จ หรือ path ไม่ถูกต้อง
+ติดตั้ง Tesseract ไม่สำเร็จ หรือติดตั้งที่ path อื่น
 
-### "No module named 'xxx'"
-```bash
-pip install -r requirements.txt
+แก้ไข: เปิด `game_translator.py` แก้ path:
+```python
+pytesseract.pytesseract.tesseract_cmd = r'C:\Your\Path\To\tesseract.exe'
 ```
 
-### TTS ไม่ออกเสียง
-- ตรวจสอบว่าเปิดเสียงคอมไว้
-- ลองเปลี่ยน voice ในโค้ด
+### ภาษาไทยแสดงเป็น `?????`
+ติดตั้ง font ไทยใน Windows:
+- TH Sarabun New (โหลดจาก f0nt.com)
+- หรือ Windows จะใช้ Tahoma แทนอัตโนมัติ
+
+### ไม่สามารถลากกรอบได้
+- ต้องกด `S` หรือ `D` ก่อนลาก
+- ต้องลากจากซ้ายบนไปขวาล่าง
+
+### หน้าต่างแสดงผลหายไป
+กด `F10` เพื่อเปิด/ปิดการแสดงผล
+
+---
+
+## 💡 Tips
+
+- แนะนำให้เล่นเกมใน **Windowed Mode** หรือ **Borderless Window**
+- ตั้งค่าครั้งเดียว บันทึกอัตโนมัติ เปิดมาใช้ได้เลย
+- ปรับความโปร่งใสต่ำ ๆ จะได้ไม่บังเกม
 
 ---
 
@@ -122,4 +161,3 @@ MIT License - ใช้ฟรี แก้ไขได้ แชร์ได้!
 
 - OCR: [Tesseract](https://github.com/tesseract-ocr/tesseract)
 - Translation: [Google Translate](https://translate.google.com)
-- TTS: [pyttsx3](https://github.com/nateshmbhat/pyttsx3)
