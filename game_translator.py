@@ -325,108 +325,113 @@ class GameTranslator:
                         print(f"✅ ตั้งค่าตำแหน่งแสดงผล: ({x1}, {y1})")
                     self.save_config()
     
-    def setup_mode(self):
-        """โหมดตั้งค่า - ลากกรอบและปรับสี"""
-        print("\n" + "="*50)
-        print("🔧 โหมดตั้งค่า")
-        print("="*50)
-        print("1. ลากกรอบแปล (Source) - กด 'S'")
-        print("2. ลากตำแหน่งแสดงผล (Display) - กด 'D'")
-        print("3. ปรับสีพื้นหลัง - กด 'B'")
-        print("4. ปรับสีตัวอักษร - กด 'T'")
-        print("5. ปรับความโปร่งใส - กด 'O'")
-        print("6. เสร็จสิ้น - กด 'Q'")
-        print("="*50)
-        
-        # สร้างหน้าต่างสำหรับตั้งค่า
-        cv2.namedWindow('Setup')
-        cv2.setMouseCallback('Setup', self.mouse_callback)
+    def setup_mode_simple(self):
+        """โหมดตั้งค่าแบบง่าย - ใช้ CLI + แคปหน้าจอครั้งเดียว"""
+        print("\n" + "="*60)
+        print("🔧 โหมดตั้งค่า (แบบง่าย)")
+        print("="*60)
+        print("\n📋 คำสั่ง:")
+        print("   1 = ตั้งค่ากรอบแปล (ลากบนหน้าจอ)")
+        print("   2 = ตั้งค่าตำแหน่งแสดงผล")
+        print("   3 = ปรับสีพื้นหลัง")
+        print("   4 = ปรับสีตัวอักษร")
+        print("   5 = ปรับความโปร่งใส")
+        print("   6 = ดูการตั้งค่าปัจจุบัน")
+        print("   0 = เสร็จสิ้น")
+        print("="*60)
         
         while True:
-            # แคปหน้าจอปัจจุบัน
-            screenshot = pyautogui.screenshot()
-            frame = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+            choice = input("\nเลือกคำสั่ง (0-6): ").strip()
             
-            # วาดกรอบที่ตั้งค่าไว้
-            if self.source_region:
-                x, y, w, h = self.source_region
-                cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                cv2.putText(frame, "SOURCE", (x, y-10), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            if choice == '1':
+                self.set_region_manual("แปล (Source)", 'source')
             
-            if self.display_region:
-                x, y, w, h = self.display_region
-                cv2.rectangle(frame, (x, y), (x+400, y+200), (255, 100, 100), 2)
-                cv2.putText(frame, "DISPLAY", (x, y-10),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 100, 100), 2)
+            elif choice == '2':
+                self.set_region_manual("แสดงผล (Display)", 'display')
             
-            # วาดกรอบที่กำลังลาก
-            if self.is_selecting and self.drag_start and self.current_drag:
-                x1, y1 = self.drag_start
-                x2, y2 = self.current_drag
-                color = (0, 255, 255) if self.drag_mode == 'source' else (255, 255, 0)
-                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+            elif choice == '3':
+                self.cycle_color('bg')
             
-            # แสดงสถานะ
-            status_text = f"BG: {self.bg_color} | Text: {self.text_color} | Opacity: {self.opacity:.1f}"
-            cv2.putText(frame, status_text, (10, 30),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+            elif choice == '4':
+                self.cycle_color('text')
             
-            cv2.imshow('Setup', frame)
+            elif choice == '5':
+                self.cycle_opacity()
             
-            key = cv2.waitKey(50) & 0xFF
+            elif choice == '6':
+                self.show_current_settings()
             
-            if key == ord('s'):
-                self.drag_mode = 'source'
-                print("🖱️  โหมด: ลากกรอบแปล (Source)")
-            
-            elif key == ord('d'):
-                self.drag_mode = 'display'
-                print("🖱️  โหมด: ลากตำแหน่งแสดงผล (Display)")
-            
-            elif key == ord('b'):
-                # ปรับสีพื้นหลัง (cycle ไปเรื่อยๆ)
-                presets = [
-                    (30, 30, 30),      # เทาเข้ม
-                    (0, 0, 0),         # ดำ
-                    (50, 0, 0),        # แดงเข้ม
-                    (0, 50, 0),        # เขียวเข้ม
-                    (0, 0, 50),        # น้ำเงินเข้ม
-                    (50, 50, 0),       # น้ำตาล
-                    (25, 25, 50),      # ม่วงเข้ม
-                ]
-                idx = presets.index(self.bg_color) if self.bg_color in presets else 0
-                self.bg_color = presets[(idx + 1) % len(presets)]
-                print(f"🎨 พื้นหลัง: {self.bg_color}")
-                self.save_config()
-            
-            elif key == ord('t'):
-                # ปรับสีตัวอักษร
-                presets = [
-                    (255, 255, 200),   # ขาวเหลือง
-                    (255, 255, 255),   # ขาว
-                    (200, 255, 200),   # เขียวอ่อน
-                    (200, 200, 255),   # ฟ้าอ่อน
-                    (255, 200, 200),   # ชมพูอ่อน
-                    (255, 255, 0),     # เหลือง
-                    (0, 255, 255),     # ฟ้า cyan
-                ]
-                idx = presets.index(self.text_color) if self.text_color in presets else 0
-                self.text_color = presets[(idx + 1) % len(presets)]
-                print(f"🎨 ตัวอักษร: {self.text_color}")
-                self.save_config()
-            
-            elif key == ord('o'):
-                # ปรับความโปร่งใส
-                self.opacity = 0.5 if self.opacity > 0.8 else (0.7 if self.opacity > 0.6 else 0.9)
-                print(f"👁️ ความโปร่งใส: {self.opacity}")
-                self.save_config()
-            
-            elif key == ord('q') or key == 27:  # Q or ESC
+            elif choice == '0':
+                print("✅ เสร็จสิ้นการตั้งค่า\n")
                 break
+            
+            else:
+                print("❌ ไม่รู้จำคำสั่งนี้")
+    
+    def set_region_manual(self, name, mode):
+        """ตั้งค่าพื้นที่แบบ manual - ใช้พิมพ์ตำแหน่ง"""
+        print(f"\n🖱️  ตั้งค่าพื้นที่{name}")
+        print("   วิธีใช้: เปิดเกมไว้ แล้วกรอกตำแหน่งตามนี้")
         
-        cv2.destroyWindow('Setup')
-        print("✅ เสร็จสิ้นการตั้งค่า\n")
+        try:
+            print("   (หรือกรอก 0 ทั้งหมดเพื่อยกเลิก)")
+            x = int(input(f"   X ตำแหน่ง (จากซ้าย): "))
+            y = int(input(f"   Y ตำแหน่ง (จากบน): "))
+            w = int(input(f"   ความกว้าง (pixels): "))
+            h = int(input(f"   ความสูง (pixels): "))
+            
+            if x == 0 and y == 0 and w == 0 and h == 0:
+                print("   ❌ ยกเลิก")
+                return
+            
+            if mode == 'source':
+                self.source_region = (x, y, w, h)
+            else:
+                self.display_region = (x, y, 400, 200)  # ขนาดแสดงผลคงที่
+            
+            self.save_config()
+            print(f"   ✅ บันทึก: ({x}, {y}, {w}, {h})")
+            
+        except ValueError:
+            print("   ❌ กรุณากรอกตัวเลขเท่านั้น")
+    
+    def cycle_color(self, color_type):
+        """เปลี่ยนสีแบบ cycle"""
+        if color_type == 'bg':
+            presets = [
+                (30, 30, 30), (0, 0, 0), (50, 0, 0), (0, 50, 0),
+                (0, 0, 50), (50, 50, 0), (25, 25, 50)
+            ]
+            idx = presets.index(self.bg_color) if self.bg_color in presets else -1
+            self.bg_color = presets[(idx + 1) % len(presets)]
+            print(f"🎨 พื้นหลัง: {self.bg_color}")
+        else:
+            presets = [
+                (255, 255, 200), (255, 255, 255), (200, 255, 200),
+                (200, 200, 255), (255, 200, 200), (255, 255, 0), (0, 255, 255)
+            ]
+            idx = presets.index(self.text_color) if self.text_color in presets else -1
+            self.text_color = presets[(idx + 1) % len(presets)]
+            print(f"🎨 ตัวอักษร: {self.text_color}")
+        
+        self.save_config()
+    
+    def cycle_opacity(self):
+        """เปลี่ยนความโปร่งใส"""
+        values = [0.9, 0.7, 0.5, 0.3]
+        idx = values.index(self.opacity) if self.opacity in values else -1
+        self.opacity = values[(idx + 1) % len(values)]
+        print(f"👁️ ความโปร่งใส: {self.opacity}")
+        self.save_config()
+    
+    def show_current_settings(self):
+        """แสดงการตั้งค่าปัจจุบัน"""
+        print("\n📊 การตั้งค่าปัจจุบัน:")
+        print(f"   กรอบแปล: {self.source_region or 'ยังไม่ตั้ง'}")
+        print(f"   ตำแหน่งแสดงผล: {self.display_region or 'ยังไม่ตั้ง'}")
+        print(f"   สีพื้นหลัง: {self.bg_color}")
+        print(f"   สีตัวอักษร: {self.text_color}")
+        print(f"   ความโปร่งใส: {self.opacity}")
     
     def run(self):
         """รันโปรแกรมหลัก"""
@@ -456,7 +461,7 @@ class GameTranslator:
         
         while self.running:
             if keyboard.is_pressed(self.setup_key):
-                self.setup_mode()
+                self.setup_mode_simple()
                 time.sleep(0.5)
             
             elif keyboard.is_pressed(self.capture_key):
