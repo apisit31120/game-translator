@@ -181,10 +181,12 @@ class GameTranslator:
         
         # คำนวณความสูงที่ต้องการ
         lines = []
-        if self.show_original and original:
-            lines.append(("EN:", original, self.header_color))
+        # แสดงเฉพาะภาษาไทย (ไม่แสดง EN)
         if translated:
-            lines.append(("TH:", translated, self.border_color))
+            lines.append(("", translated, self.text_color))
+        elif self.show_original and original:
+            # ถ้าแปลไม่ได้ แสดงต้นฉบับ
+            lines.append(("EN:", original, self.header_color))
         
         # สร้าง dummy image เพื่อคำนวณขนาด
         dummy = Image.new('RGB', (1, 1))
@@ -352,15 +354,15 @@ class GameTranslator:
         print("🔧 โหมดตั้งค่า (แบบง่าย)")
         print("="*60)
         print("\n📋 คำสั่ง:")
-        print("   1 = ตั้งค่ากรอบแปล (กด F1 สองครั้ง)")
-        print("   2 = ตั้งค่าตำแหน่งแสดงผล (กด F1 สองครั้ง)")
+        print("   1 = ตั้งค่ากรอบแปล (กด F2 สองครั้ง)")
+        print("   2 = ตั้งค่าตำแหน่งแสดงผล (กด F2 สองครั้ง)")
         print("   3 = ปรับสีพื้นหลัง")
         print("   4 = ปรับสีตัวอักษร")
         print("   5 = ปรับความโปร่งใส")
         print("   6 = ดูการตั้งค่าปัจจุบัน")
         print("   0 = เสร็จสิ้น")
-        print("\n💡 วิธีใช้ F1: เลื่อนเมาส์ไปที่มุมแรก → กด F1")
-        print("               เลื่อนเมาส์ไปที่มุมตรงข้าม → กด F1 อีกครั้ง")
+        print("\n💡 วิธีใช้ F2: เลื่อนเมาส์ไปที่มุมแรก → กด F2")
+        print("               เลื่อนเมาส์ไปที่มุมตรงข้าม → กด F2 อีกครั้ง")
         print("="*60)
         
         while True:
@@ -394,28 +396,28 @@ class GameTranslator:
     def set_region_by_points(self, name, mode):
         """ตั้งค่าพื้นที่แบบกด F1 สองครั้ง พร้อมแสดง preview"""
         print(f"\n🖱️  ตั้งค่าพื้นที่{name}")
-        print("   1. เลื่อนเมาส์ไปที่มุมแรก (ซ้ายบน) → กด F1")
-        print("   2. เลื่อนเมาส์ไปที่มุมตรงข้าม (ขวาล่าง) → กด F1")
+        print("   1. เลื่อนเมาส์ไปที่มุมแรก (ซ้ายบน) → กด F2")
+        print("   2. เลื่อนเมาส์ไปที่มุมตรงข้าม (ขวาล่าง) → กด F2")
         print("   3. ดู preview กรอบ → กด Enter เพื่อยืนยัน หรือ ESC เพื่อยกเลิก")
-        print("\n   รอการกด F1 ครั้งที่ 1...")
+        print("\n   รอการกด F2 ครั้งที่ 1...")
         
         point1 = None
         point2 = None
         
         # รอจุดที่ 1
         while point1 is None:
-            if keyboard.is_pressed('f1'):
+            if keyboard.is_pressed('f2'):
                 point1 = pyautogui.position()
                 print(f"   ✅ จุดที่ 1: ({point1.x}, {point1.y})")
                 time.sleep(0.5)
                 break
             time.sleep(0.05)
         
-        print("   รอการกด F1 ครั้งที่ 2...")
+        print("   รอการกด F2 ครั้งที่ 2...")
         
         # รอจุดที่ 2
         while point2 is None:
-            if keyboard.is_pressed('f1'):
+            if keyboard.is_pressed('f2'):
                 point2 = pyautogui.position()
                 print(f"   ✅ จุดที่ 2: ({point2.x}, {point2.y})")
                 time.sleep(0.5)
