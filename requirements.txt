@@ -13,11 +13,8 @@ pytesseract>=0.3.10
 # Translation
 googletrans==4.0.0rc1
 
-# Text-to-Speech
-pyttsx3>=2.90
-
 # Keyboard hotkeys
 keyboard>=0.13.5
 
-# Windows specific
-pywin32>=306; platform_system=="Windows"
+# GUI (tkinter is included with Python on Windows)
+# No additional package needed
