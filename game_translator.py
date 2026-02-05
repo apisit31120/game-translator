@@ -466,7 +466,10 @@ class GameTranslator:
             elif keyboard.is_pressed(self.toggle_display):
                 display_enabled = not display_enabled
                 if not display_enabled:
-                    cv2.destroyWindow('Translation')
+                    try:
+                        cv2.destroyWindow('Translation')
+                    except:
+                        pass  # หน้าต่างอาจยังไม่ถูกสร้าง
                 print(f"👁️  แสดงผล: {'เปิด ✅' if display_enabled else 'ปิด ❌'}")
                 time.sleep(0.5)
             
