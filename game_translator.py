@@ -75,35 +75,56 @@ class GameTranslator:
             self.tts_engine.runAndWait()
             self.last_text = text
     
+    def get_font(self, size=20):
+        """หา font ที่รองรับภาษาไทย"""
+        # ลองหา font ภาษาไทยจากระบบ
+        thai_fonts = [
+            'C:/Windows/Fonts/THSarabunNew.ttf',  # Thai Sarabun (Windows)
+            'C:/Windows/Fonts/tahoma.ttf',         # Tahoma (มี Thai glyph)
+            'C:/Windows/Fonts/segoeui.ttf',        # Segoe UI
+            'C:/Windows/Fonts/arial.ttf',          # Arial
+            '/usr/share/fonts/truetype/thai/TlwgTypist.ttf',  # Linux
+            '/System/Library/Fonts/Supplemental/Tahoma.ttf',  # macOS
+        ]
+        
+        for font_path in thai_fonts:
+            try:
+                return ImageFont.truetype(font_path, size)
+            except:
+                continue
+        
+        # ถ้าไม่เจอ ใช้ default font
+        return ImageFont.load_default()
+    
     def show_overlay(self, original, translated):
-        """แสดงข้อความแปลบนหน้าจอ (overlay)"""
-        # สร้างหน้าต่างแบบ always-on-top โปร่งใส
-        img = np.zeros((200, 800, 3), dtype=np.uint8)
-        img.fill(30)  # พื้นหลังสีเทาเข้ม
+        """แสดงข้อความแปลบนหน้าจอ (overlay) - รองรับภาษาไทยด้วย PIL"""
+        # สร้างภาพด้วย PIL
+        width, height = 800, 200
+        img_pil = Image.new('RGB', (width, height), (30, 30, 30))  # พื้นหลังสีเทาเข้ม
+        draw = ImageDraw.Draw(img_pil)
         
-        # ใส่ข้อความ
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        cv2.putText(img, "EN:", (10, 30), font, 0.7, (100, 255, 100), 2)
+        # โหลด fonts
+        font_header = self.get_font(22)
+        font_text = self.get_font(18)
+        font_small = self.get_font(14)
         
-        # ตัดข้อความให้พอดีหน้าจอ
-        words = original[:100] if len(original) > 100 else original
-        cv2.putText(img, words, (50, 30), font, 0.6, (255, 255, 255), 1)
+        # วาดข้อความ EN
+        draw.text((10, 10), "EN:", fill=(100, 255, 100), font=font_header)
+        en_text = original[:80] if len(original) > 80 else original
+        draw.text((60, 12), en_text, fill=(255, 255, 255), font=font_text)
         
-        cv2.putText(img, "TH:", (10, 80), font, 0.7, (100, 200, 255), 2)
+        # วาดข้อความ TH
+        draw.text((10, 50), "TH:", fill=(100, 200, 255), font=font_header)
+        th_text = translated[:80] if len(translated) > 80 else translated
+        draw.text((60, 52), th_text, fill=(255, 255, 200), font=font_text)
         
-        # แปลง Thai text สำหรับแสดง (opencv ไม่รองรับ Thai ดี)
-        # ใช้ PIL สำหรับ Thai font
-        thai_text = translated[:100] if len(translated) > 100 else translated
+        # วาดคำแนะนำ
+        draw.text((10, 170), "กด F9 แปล | F10 Auto | ESC ออก", fill=(150, 150, 150), font=font_small)
         
-        # แสดงภาษาไทยแบบง่าย (ถ้ามีปัญหาจะข้ามไป)
-        try:
-            cv2.putText(img, thai_text, (50, 80), font, 0.6, (255, 255, 200), 1)
-        except:
-            pass
+        # แปลง PIL Image เป็น OpenCV format
+        img_cv = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
         
-        cv2.putText(img, "กด F9 แปล | F10 Auto | ESC ออก", (10, 170), font, 0.5, (150, 150, 150), 1)
-        
-        cv2.imshow('Game Translator', img)
+        cv2.imshow('Game Translator', img_cv)
         cv2.setWindowProperty('Game Translator', cv2.WND_PROP_TOPMOST, 1)
         cv2.waitKey(1)
     
