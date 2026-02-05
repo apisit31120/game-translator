@@ -326,28 +326,30 @@ class GameTranslator:
                     self.save_config()
     
     def setup_mode_simple(self):
-        """โหมดตั้งค่าแบบง่าย - ใช้ CLI + แคปหน้าจอครั้งเดียว"""
+        """โหมดตั้งค่าแบบง่าย - ใช้ CLI + F1 สำหรับเลือกจุด"""
         print("\n" + "="*60)
         print("🔧 โหมดตั้งค่า (แบบง่าย)")
         print("="*60)
         print("\n📋 คำสั่ง:")
-        print("   1 = ตั้งค่ากรอบแปล (ลากบนหน้าจอ)")
-        print("   2 = ตั้งค่าตำแหน่งแสดงผล")
+        print("   1 = ตั้งค่ากรอบแปล (กด F1 สองครั้ง)")
+        print("   2 = ตั้งค่าตำแหน่งแสดงผล (กด F1 สองครั้ง)")
         print("   3 = ปรับสีพื้นหลัง")
         print("   4 = ปรับสีตัวอักษร")
         print("   5 = ปรับความโปร่งใส")
         print("   6 = ดูการตั้งค่าปัจจุบัน")
         print("   0 = เสร็จสิ้น")
+        print("\n💡 วิธีใช้ F1: เลื่อนเมาส์ไปที่มุมแรก → กด F1")
+        print("               เลื่อนเมาส์ไปที่มุมตรงข้าม → กด F1 อีกครั้ง")
         print("="*60)
         
         while True:
             choice = input("\nเลือกคำสั่ง (0-6): ").strip()
             
             if choice == '1':
-                self.set_region_manual("แปล (Source)", 'source')
+                self.set_region_by_points("แปล (Source)", 'source')
             
             elif choice == '2':
-                self.set_region_manual("แสดงผล (Display)", 'display')
+                self.set_region_by_points("แสดงผล (Display)", 'display')
             
             elif choice == '3':
                 self.cycle_color('bg')
@@ -368,32 +370,60 @@ class GameTranslator:
             else:
                 print("❌ ไม่รู้จำคำสั่งนี้")
     
-    def set_region_manual(self, name, mode):
-        """ตั้งค่าพื้นที่แบบ manual - ใช้พิมพ์ตำแหน่ง"""
+    def set_region_by_points(self, name, mode):
+        """ตั้งค่าพื้นที่แบบกด F1 สองครั้งที่ตำแหน่งมุมตรงข้าม"""
         print(f"\n🖱️  ตั้งค่าพื้นที่{name}")
-        print("   วิธีใช้: เปิดเกมไว้ แล้วกรอกตำแหน่งตามนี้")
+        print("   1. เลื่อนเมาส์ไปที่มุมแรก (ซ้ายบน)")
+        print("   2. กด F1 เพื่อบันทึกจุดที่ 1")
+        print("   3. เลื่อนเมาส์ไปที่มุมตรงข้าม (ขวาล่าง)")
+        print("   4. กด F1 อีกครั้งเพื่อบันทึกจุดที่ 2")
+        print("\n   รอการกด F1...")
         
-        try:
-            print("   (หรือกรอก 0 ทั้งหมดเพื่อยกเลิก)")
-            x = int(input(f"   X ตำแหน่ง (จากซ้าย): "))
-            y = int(input(f"   Y ตำแหน่ง (จากบน): "))
-            w = int(input(f"   ความกว้าง (pixels): "))
-            h = int(input(f"   ความสูง (pixels): "))
-            
-            if x == 0 and y == 0 and w == 0 and h == 0:
-                print("   ❌ ยกเลิก")
-                return
-            
-            if mode == 'source':
-                self.source_region = (x, y, w, h)
-            else:
-                self.display_region = (x, y, 400, 200)  # ขนาดแสดงผลคงที่
-            
-            self.save_config()
-            print(f"   ✅ บันทึก: ({x}, {y}, {w}, {h})")
-            
-        except ValueError:
-            print("   ❌ กรุณากรอกตัวเลขเท่านั้น")
+        point1 = None
+        point2 = None
+        
+        # รอจุดที่ 1
+        while point1 is None:
+            if keyboard.is_pressed('f1'):
+                point1 = pyautogui.position()
+                print(f"   ✅ จุดที่ 1: ({point1.x}, {point1.y})")
+                time.sleep(0.5)  # กันการกดซ้ำ
+                break
+            time.sleep(0.05)
+        
+        print("   เลื่อนเมาส์ไปมุมตรงข้าม แล้วกด F1...")
+        
+        # รอจุดที่ 2
+        while point2 is None:
+            if keyboard.is_pressed('f1'):
+                point2 = pyautogui.position()
+                print(f"   ✅ จุดที่ 2: ({point2.x}, {point2.y})")
+                time.sleep(0.5)
+                break
+            time.sleep(0.05)
+        
+        # คำนวณสี่เหลี่ยม
+        x1, y1 = point1.x, point1.y
+        x2, y2 = point2.x, point2.y
+        
+        # ปรับให้ x1 < x2, y1 < y2
+        x = min(x1, x2)
+        y = min(y1, y2)
+        w = abs(x2 - x1)
+        h = abs(y2 - y1)
+        
+        if w < 50 or h < 30:
+            print(f"   ❌ พื้นที่เล็กเกินไป ({w}x{h}) ต้อง > 50x30")
+            return
+        
+        if mode == 'source':
+            self.source_region = (x, y, w, h)
+            print(f"   ✅ บันทึกกรอบแปล: ({x}, {y}, {w}, {h})")
+        else:
+            self.display_region = (x, y, 400, 200)  # ขนาดแสดงผลคงที่
+            print(f"   ✅ บันทึกตำแหน่งแสดงผล: ({x}, {y})")
+        
+        self.save_config()
     
     def cycle_color(self, color_type):
         """เปลี่ยนสีแบบ cycle"""
