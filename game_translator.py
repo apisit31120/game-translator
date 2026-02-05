@@ -1,5 +1,5 @@
-# Game Translator - Borderless Overlay Edition
-# แปลภาษาเกมแบบลากเมาส์ได้ พร้อมหน้าต่างไร้ขอบ
+# Game Translator - Subtitle Bar Edition
+# แปลภาษาเกมแบบแถบ subtitle ด้านล่างจอ
 
 import cv2
 import numpy as np
@@ -11,8 +11,7 @@ import time
 import json
 import os
 import tkinter as tk
-from tkinter import font as tkfont
-from PIL import Image, ImageDraw, ImageFont, ImageTk
+from PIL import Image, ImageDraw, ImageFont
 
 # ============ TESSERACT CONFIG ============
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -27,16 +26,16 @@ class GameTranslator:
         
         # Regions
         self.source_region = None
-        self.display_pos = None
         
-        # Colors
-        self.bg_color = (20, 20, 20)
-        self.text_color = (255, 255, 255)
-        self.accent_color = (0, 200, 255)
-        self.opacity = 0.85
+        # Subtitle bar settings
+        self.bar_height = 60  # ความสูงแถบ subtitle
+        self.bar_bg_color = (0, 0, 0)  # พื้นหลังสีดำ
+        self.bar_text_color = (255, 255, 255)  # ตัวอักษรสีขาว
+        self.bar_opacity = 0.85
         
-        # Tkinter overlay window
-        self.overlay_window = None
+        # Tkinter subtitle window
+        self.subtitle_window = None
+        self.subtitle_text = tk.StringVar()
         
         # Load config
         self.load_config()
@@ -53,22 +52,20 @@ class GameTranslator:
                 with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                     config = json.load(f)
                     self.source_region = config.get('source_region')
-                    self.display_pos = config.get('display_pos')
-                    self.bg_color = tuple(config.get('bg_color', [20, 20, 20]))
-                    self.text_color = tuple(config.get('text_color', [255, 255, 255]))
-                    self.accent_color = tuple(config.get('accent_color', [0, 200, 255]))
-                    self.opacity = config.get('opacity', 0.85)
+                    self.bar_height = config.get('bar_height', 60)
+                    self.bar_bg_color = tuple(config.get('bar_bg_color', [0, 0, 0]))
+                    self.bar_text_color = tuple(config.get('bar_text_color', [255, 255, 255]))
+                    self.bar_opacity = config.get('bar_opacity', 0.85)
             except:
                 pass
     
     def save_config(self):
         config = {
             'source_region': self.source_region,
-            'display_pos': self.display_pos,
-            'bg_color': list(self.bg_color),
-            'text_color': list(self.text_color),
-            'accent_color': list(self.accent_color),
-            'opacity': self.opacity
+            'bar_height': self.bar_height,
+            'bar_bg_color': list(self.bar_bg_color),
+            'bar_text_color': list(self.bar_text_color),
+            'bar_opacity': self.bar_opacity
         }
         try:
             with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
@@ -87,21 +84,20 @@ class GameTranslator:
             return None
     
     def extract_text(self, image):
-        """OCR พร้อม preprocessing ให้ผลลัพธ์ดีขึ้น"""
+        """OCR พร้อม preprocessing"""
         if image is None:
             return ""
         
-        # Preprocessing ให้ OCR แม่นยำขึ้น
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Resize ใหญ่ขึ้น 2x เพื่อ OCR ได้ดีขึ้น
+        # Resize ใหญ่ขึ้น 2x
         height, width = gray.shape
         gray = cv2.resize(gray, (width * 2, height * 2), interpolation=cv2.INTER_CUBIC)
         
         # Denoise
         gray = cv2.fastNlMeansDenoising(gray, None, 10, 7, 21)
         
-        # Threshold แบบ adaptive
+        # Threshold
         gray = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
                                       cv2.THRESH_BINARY, 11, 2)
         
@@ -112,7 +108,7 @@ class GameTranslator:
         if not text or len(text) < 2:
             return ""
         try:
-            # แบ่งข้อความยาวเป็นช่วงๆ ละ 500 ตัวอักษร
+            # แบ่งข้อความยาวเป็นช่วงๆ
             max_chunk = 500
             if len(text) > max_chunk:
                 chunks = [text[i:i+max_chunk] for i in range(0, len(text), max_chunk)]
@@ -127,135 +123,150 @@ class GameTranslator:
             print(f"[ERROR] {e}")
             return "(แปลไม่สำเร็จ)"
     
-    def create_overlay_window(self, text):
-        """สร้างหน้าต่างลอยแบบไร้ขอบ (borderless)"""
-        if self.overlay_window:
+    def create_subtitle_bar(self):
+        """สร้างหน้าต่าง subtitle bar ด้านล่างจอ"""
+        if self.subtitle_window:
             try:
-                self.overlay_window.destroy()
+                self.subtitle_window.destroy()
             except:
                 pass
         
-        if not self.display_pos or not text:
-            return
+        # หาขนาดหน้าจอ
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
         
-        # สร้าง Tkinter window
-        self.overlay_window = tk.Toplevel()
-        self.overlay_window.overrideredirect(True)  # เอา title bar ออก
-        self.overlay_window.attributes('-topmost', True)
-        self.overlay_window.attributes('-alpha', self.opacity)
+        # สร้าง window
+        self.subtitle_window = tk.Toplevel()
+        self.subtitle_window.overrideredirect(True)  # ไม่มี title bar
+        self.subtitle_window.attributes('-topmost', True)
+        self.subtitle_window.attributes('-alpha', self.bar_opacity)
         
-        # คำนวณขนาดตามข้อความ
-        lines = text.split('\n')
-        max_chars = max(len(line) for line in lines) if lines else 20
-        num_lines = len(lines)
+        # ตำแหน่งด้านล่างสุดของจอ
+        bar_y = screen_height - self.bar_height - 40  # -40 เผื่อ taskbar
+        self.subtitle_window.geometry(f"{screen_width}x{self.bar_height}+0+{bar_y}")
         
-        # ขนาดพื้นฐาน
-        char_width = 12
-        line_height = 24
-        padding = 15
-        
-        width = min(max(max_chars * char_width + padding * 2, 250), 500)
-        height = min(num_lines * line_height + padding * 2 + 20, 400)
-        
-        x, y = self.display_pos
-        self.overlay_window.geometry(f"{width}x{height}+{x}+{y}")
-        
-        # พื้นหลัง
-        bg_color = f'#{self.bg_color[0]:02x}{self.bg_color[1]:02x}{self.bg_color[2]:02x}'
-        accent_color = f'#{self.accent_color[0]:02x}{self.accent_color[1]:02x}{self.accent_color[2]:02x}'
-        text_color = f'#{self.text_color[0]:02x}{self.text_color[1]:02x}{self.text_color[2]:02x}'
+        # พื้นหลังสีดำ
+        bg_color = f'#{self.bar_bg_color[0]:02x}{self.bar_bg_color[1]:02x}{self.bar_bg_color[2]:02x}'
+        text_color = f'#{self.bar_text_color[0]:02x}{self.bar_text_color[1]:02x}{self.bar_text_color[2]:02x}'
         
         # Frame หลัก
-        frame = tk.Frame(self.overlay_window, bg=bg_color, highlightbackground=accent_color, 
-                         highlightthickness=2)
-        frame.pack(fill=tk.BOTH, expand=True)
+        main_frame = tk.Frame(self.subtitle_window, bg=bg_color)
+        main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Canvas สำหรับเส้นขอบ accent
-        canvas = tk.Canvas(frame, bg=bg_color, highlightthickness=0)
-        canvas.pack(fill=tk.BOTH, expand=True)
+        # แถบปุ่มควบคุมด้านบน (เล็กๆ)
+        btn_frame = tk.Frame(main_frame, bg=bg_color, height=20)
+        btn_frame.pack(fill=tk.X, side=tk.TOP)
+        btn_frame.pack_propagate(False)
         
-        # เส้น accent ด้านซ้าย
-        canvas.create_line(4, 0, 4, height, fill=accent_color, width=4)
+        # ปุ่มเล็กๆ
+        btn_style = {'bg': '#333333', 'fg': 'white', 'font': ('Arial', 7), 
+                     'bd': 0, 'padx': 5, 'pady': 0}
         
-        # Text widget สำหรับแสดงข้อความ (รองรับมากกว่า 1 บรรทัด + scroll ได้)
-        text_widget = tk.Text(frame, wrap=tk.WORD, font=('Tahoma', 12), 
-                              bg=bg_color, fg=text_color,
-                              padx=10, pady=10, relief=tk.FLAT,
-                              selectbackground=accent_color)
-        text_widget.place(x=10, y=5, width=width-20, height=height-30)
-        text_widget.insert(tk.END, text)
-        text_widget.config(state=tk.DISABLED)
+        tk.Button(btn_frame, text="▶", **btn_style, 
+                 command=lambda: self.translate_and_show()).pack(side=tk.LEFT, padx=2)
+        tk.Button(btn_frame, text="👁", **btn_style,
+                 command=lambda: self.toggle_subtitle()).pack(side=tk.LEFT, padx=2)
+        tk.Button(btn_frame, text="⚙", **btn_style,
+                 command=lambda: self.setup_mode()).pack(side=tk.LEFT, padx=2)
+        tk.Button(btn_frame, text="✕", **btn_style,
+                 command=lambda: self.hide_subtitle()).pack(side=tk.RIGHT, padx=5)
         
-        # Label ด้านล่าง
-        hint = tk.Label(frame, text="F9=แปล | F10=ซ่อน", font=('Tahoma', 9),
-                       bg=bg_color, fg='#999999')
-        hint.place(x=10, y=height-22)
+        # Label แสดงข้อความ (ตรงกลาง)
+        self.subtitle_label = tk.Label(main_frame, textvariable=self.subtitle_text,
+                                       font=('TH Sarabun New', 16, 'bold'),
+                                       bg=bg_color, fg=text_color,
+                                       wraplength=screen_width - 100)
+        self.subtitle_label.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
         
-        # ทำให้ลากย้ายได้
+        # ลากย้ายได้
         def start_move(event):
-            self.overlay_window._drag_start_x = event.x
-            self.overlay_window._drag_start_y = event.y
+            self.subtitle_window._drag_start_x = event.x
+            self.subtitle_window._drag_start_y = event.y
         
         def on_move(event):
-            x = self.overlay_window.winfo_x() + event.x - self.overlay_window._drag_start_x
-            y = self.overlay_window.winfo_y() + event.y - self.overlay_window._drag_start_y
-            self.overlay_window.geometry(f"+{x}+{y}")
-            self.display_pos = (x, y)
+            x = self.subtitle_window.winfo_x() + event.x - self.subtitle_window._drag_start_x
+            y = self.subtitle_window.winfo_y() + event.y - self.subtitle_window._drag_start_y
+            self.subtitle_window.geometry(f"+{x}+{y}")
         
-        frame.bind('<Button-1>', start_move)
-        frame.bind('<B1-Motion>', on_move)
+        main_frame.bind('<Button-1>', start_move)
+        main_frame.bind('<B1-Motion>', on_move)
+        self.subtitle_label.bind('<Button-1>', start_move)
+        self.subtitle_label.bind('<B1-Motion>', on_move)
         
-        # ปิดเมื่อคลิกขวา
-        def close_overlay(event):
-            self.hide_overlay()
-        
-        frame.bind('<Button-3>', close_overlay)
-        
-        self.overlay_window.update()
+        self.subtitle_window.update()
     
-    def hide_overlay(self):
-        if self.overlay_window:
+    def update_subtitle_text(self, text):
+        """อัปเดตข้อความ subtitle"""
+        if not self.subtitle_window:
+            self.create_subtitle_bar()
+        
+        self.subtitle_text.set(text)
+        
+        # ปรับขนาด font ตามความยาวข้อความ
+        text_len = len(text)
+        if text_len > 200:
+            font_size = 12
+        elif text_len > 100:
+            font_size = 14
+        else:
+            font_size = 16
+        
+        self.subtitle_label.config(font=('TH Sarabun New', font_size, 'bold'))
+    
+    def hide_subtitle(self):
+        """ซ่อน subtitle bar"""
+        if self.subtitle_window:
             try:
-                self.overlay_window.destroy()
-                self.overlay_window = None
+                self.subtitle_window.destroy()
+                self.subtitle_window = None
             except:
                 pass
     
+    def toggle_subtitle(self):
+        """สลับแสดง/ซ่อน subtitle"""
+        if self.subtitle_window:
+            self.hide_subtitle()
+        else:
+            self.create_subtitle_bar()
+            self.subtitle_text.set("พร้อมแปล... กด F9 เพื่อแปล")
+    
     def translate_and_show(self):
+        """แปลและแสดงผล"""
         if not self.source_region:
             print("⚠️ ยังไม่ได้ตั้งค่ากรอบแปล (กด F8)")
+            self.subtitle_text.set("⚠️ กด F8 เพื่อตั้งค่ากรอบแปล")
             return
         
-        print("📸 กำลังแคป...")
+        self.subtitle_text.set("📸 กำลังแคป...")
+        
         image = self.capture_screen(self.source_region)
         if image is None:
+            self.subtitle_text.set("❌ แคปไม่สำเร็จ")
             return
         
         text = self.extract_text(image)
         if not text:
-            print("❌ ไม่พบข้อความ")
+            self.subtitle_text.set("❌ ไม่พบข้อความ")
             return
         
-        print(f"📝 พบ: {text[:80]}...")
-        print(f"   (ความยาว: {len(text)} ตัวอักษร)")
+        print(f"📝 พบ: {text[:60]}...")
+        self.subtitle_text.set("🌐 กำลังแปล...")
         
         translated = self.translate(text)
         
         if translated:
-            print(f"🌐 แปล: {translated[:80]}...")
-            self.create_overlay_window(translated)
+            print(f"🌐 แปล: {translated[:60]}...")
+            self.update_subtitle_text(translated)
     
-    def setup_drag_mode(self, mode_name, save_callback):
+    def setup_drag_mode(self):
         """โหมดลากเลือกพื้นที่"""
-        print(f"\n🖱️ ตั้งค่า{mode_name}")
+        print("\n🖱️ ตั้งค่ากรอบแปล")
         print("   คลิกซ้ายค้างแล้วลากเพื่อเลือกพื้นที่")
         print("   ปล่อยเมาส์ = ยืนยัน | ESC = ยกเลิก")
         
-        # แคปหน้าจอ
         screenshot = pyautogui.screenshot()
         bg = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
         
-        # สร้าง fullscreen window
         cv2.namedWindow('Setup', cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty('Setup', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         
@@ -286,30 +297,24 @@ class GameTranslator:
         while True:
             display = bg.copy()
             
-            # วาดกรอบขณะลาก
             if is_dragging and drag_start and drag_end:
                 x1, y1 = drag_start
                 x2, y2 = drag_end
-                
-                # กรอบโปร่งใส
                 overlay = display.copy()
                 cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 255, 255), -1)
                 display = cv2.addWeighted(display, 0.6, overlay, 0.4, 0)
                 cv2.rectangle(display, (x1, y1), (x2, y2), (0, 255, 255), 2)
-                
-                # ขนาด
                 w, h = abs(x2 - x1), abs(y2 - y1)
                 cv2.putText(display, f"{w} x {h}", (x1 + 5, y1 - 10),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
             
-            # คำแนะนำ
-            cv2.putText(display, f"{mode_name}: ลากเลือก | ESC = ยกเลิก", 
+            cv2.putText(display, "ลากเลือกกรอบแปล | ESC = ยกเลิก", 
                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             
             cv2.imshow('Setup', display)
             
             key = cv2.waitKey(30) & 0xFF
-            if key == 27:  # ESC
+            if key == 27:
                 break
             if selection:
                 break
@@ -317,10 +322,12 @@ class GameTranslator:
         cv2.destroyWindow('Setup')
         
         if selection:
-            save_callback(selection)
-            print(f"✅ บันทึก: {selection}")
-            return selection
-        return None
+            self.source_region = selection
+            self.save_config()
+            print(f"✅ บันทึกกรอบแปล: {selection}")
+            self.subtitle_text.set("✅ ตั้งค่ากรอบแปลเรียบร้อย กด F9 เพื่อแปล")
+            return True
+        return False
     
     def setup_mode(self):
         """โหมดตั้งค่า"""
@@ -328,45 +335,31 @@ class GameTranslator:
         print("🔧 โหมดตั้งค่า")
         print("="*50)
         print("1 = ตั้งค่ากรอบแปล (ลากเมาส์)")
-        print("2 = ตั้งค่าตำแหน่งแสดงผล")
-        print("3 = ปรับสีพื้นหลัง")
-        print("4 = ปรับสีตัวอักษร")
-        print("5 = ปรับความโปร่งใส")
+        print("2 = ปรับความสูงแถบ subtitle")
+        print("3 = ปรับความโปร่งใส")
         print("0 = เสร็จสิ้น")
         
         while True:
             choice = input("\nเลือก: ").strip()
             
             if choice == '1':
-                result = self.setup_drag_mode("กรอบแปล", 
-                    lambda r: setattr(self, 'source_region', r))
-                if result:
-                    self.save_config()
+                self.setup_drag_mode()
             
             elif choice == '2':
-                result = self.setup_drag_mode("ตำแหน่งแสดงผล",
-                    lambda r: setattr(self, 'display_pos', (r[0], r[1])))
-                if result:
-                    self.save_config()
+                heights = [50, 60, 70, 80, 100]
+                idx = heights.index(self.bar_height) if self.bar_height in heights else 1
+                self.bar_height = heights[(idx + 1) % len(heights)]
+                print(f"📐 ความสูงแถบ: {self.bar_height}px")
+                self.save_config()
+                if self.subtitle_window:
+                    self.create_subtitle_bar()
             
             elif choice == '3':
-                colors = [(0,0,0), (20,20,20), (40,0,0), (0,40,0), (0,0,40)]
-                idx = colors.index(self.bg_color) if self.bg_color in colors else -1
-                self.bg_color = colors[(idx + 1) % len(colors)]
-                print(f"🎨 พื้นหลัง: {self.bg_color}")
+                self.bar_opacity = 0.7 if self.bar_opacity > 0.8 else (0.85 if self.bar_opacity > 0.7 else 0.95)
+                print(f"👁️ โปร่งใส: {self.bar_opacity}")
                 self.save_config()
-            
-            elif choice == '4':
-                colors = [(255,255,255), (255,255,200), (200,255,200), (255,200,200)]
-                idx = colors.index(self.text_color) if self.text_color in colors else -1
-                self.text_color = colors[(idx + 1) % len(colors)]
-                print(f"🎨 ตัวอักษร: {self.text_color}")
-                self.save_config()
-            
-            elif choice == '5':
-                self.opacity = 0.7 if self.opacity > 0.8 else (0.85 if self.opacity > 0.7 else 0.95)
-                print(f"👁️ โปร่งใส: {self.opacity}")
-                self.save_config()
+                if self.subtitle_window:
+                    self.subtitle_window.attributes('-alpha', self.bar_opacity)
             
             elif choice == '0':
                 print("✅ เสร็จสิ้น")
@@ -374,50 +367,46 @@ class GameTranslator:
     
     def run(self):
         print("="*50)
-        print("🎮 Game Translator - Borderless Overlay")
+        print("🎮 Game Translator - Subtitle Bar Edition")
         print("="*50)
         print("F8=ตั้งค่า | F9=แปล | F10=ซ่อน/แสดง | ESC=ออก")
         
         if self.source_region:
             print(f"📍 กรอบแปล: {self.source_region}")
-        if self.display_pos:
-            print(f"📍 แสดงผล: {self.display_pos}")
         
         self.running = True
-        showing = True
         
-        # สร้าง tkinter root (hidden)
+        # สร้าง tkinter root
         self.root = tk.Tk()
         self.root.withdraw()
         
+        # สร้าง subtitle bar เริ่มต้น
+        self.create_subtitle_bar()
+        self.subtitle_text.set("🎮 พร้อมใช้งาน - กด F9 เพื่อแปล | F8 เพื่อตั้งค่า")
+        
         while self.running:
+            try:
+                self.root.update()
+            except:
+                pass
+            
             if keyboard.is_pressed(self.setup_key):
                 self.setup_mode()
                 time.sleep(0.5)
             
             elif keyboard.is_pressed(self.capture_key):
-                if showing:
-                    self.translate_and_show()
+                self.translate_and_show()
                 time.sleep(0.5)
             
             elif keyboard.is_pressed(self.toggle_key):
-                showing = not showing
-                if not showing:
-                    self.hide_overlay()
-                else:
-                    print("👁️ แสดงผล - กด F9 เพื่อแปล")
+                self.toggle_subtitle()
                 time.sleep(0.5)
             
             elif keyboard.is_pressed(self.quit_key):
                 print("👋 ออก...")
-                self.hide_overlay()
+                self.hide_subtitle()
                 self.running = False
                 break
-            
-            try:
-                self.root.update()
-            except:
-                pass
             
             time.sleep(0.05)
         
